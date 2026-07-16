@@ -15,6 +15,12 @@ const DEFAULT_MAX_DISPLAY_WIDTH = 1200;
 const MIN_DISPLAY_SIZE = 200;
 const MAX_DISPLAY_SIZE = 2400;
 
+// Extra guard: even a valid, in-range width can produce a very tall image if
+// the content's natural aspect ratio is close to square. This caps the final
+// height so the image never becomes awkwardly tall on a page, shrinking both
+// dimensions together (preserving aspect ratio) if needed.
+const MAX_DISPLAY_HEIGHT = 500;
+
 export type ThemeName =
   | 'classic'
   | 'dark'
@@ -343,7 +349,13 @@ export class ImageGeneratorService {
     let displayWidth: number;
     let displayHeight: number;
 
-    if (options?.width) {
+    if (options?.width && options?.height) {
+      // Both given — use the exact box requested. preserveAspectRatio="xMidYMid meet"
+      // (already set below) fits the undistorted content inside it, centered,
+      // rather than stretching it to match a mismatched aspect ratio.
+      displayWidth = Math.min(MAX_DISPLAY_SIZE, Math.max(MIN_DISPLAY_SIZE, options.width));
+      displayHeight = Math.min(MAX_DISPLAY_SIZE, Math.max(MIN_DISPLAY_SIZE, options.height));
+    } else if (options?.width) {
       const clampedWidth = Math.min(MAX_DISPLAY_SIZE, Math.max(MIN_DISPLAY_SIZE, options.width));
       displayWidth = clampedWidth;
       displayHeight = Math.round(height * (clampedWidth / width));
@@ -355,6 +367,16 @@ export class ImageGeneratorService {
       const scale = Math.min(1, DEFAULT_MAX_DISPLAY_WIDTH / width);
       displayWidth = Math.round(width * scale);
       displayHeight = Math.round(height * scale);
+    }
+
+    // Final safety pass: only applies when height was derived automatically
+    // (from width alone, or the default fallback) — if both width and height
+    // were explicitly requested together, that exact box is respected as-is.
+    const bothExplicit = Boolean(options?.width && options?.height);
+    if (!bothExplicit && displayHeight > MAX_DISPLAY_HEIGHT) {
+      const shrink = MAX_DISPLAY_HEIGHT / displayHeight;
+      displayHeight = Math.round(displayHeight * shrink);
+      displayWidth = Math.round(displayWidth * shrink);
     }
 
     const backgroundRect = transparentBg
