@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String                 @id @default(cuid())
+  username    String                 @unique
+  createdAt   DateTime               @default(now())
+  snapshots   ContributionSnapshot[]
+
+  @@map("users")
+}
+
+model ContributionSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalCount  Int
+  // Full contribution calendar as JSON: [{ date, count, level }, ...]
+  data        Json
+  fetchedAt   DateTime @default(now())
+
+  @@index([userId, fetchedAt])
+  @@map("contribution_snapshots")
+}
