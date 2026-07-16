@@ -21,11 +21,12 @@ model ContributionSnapshot {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year        Int
   totalCount  Int
   // Full contribution calendar as JSON: [{ date, count, level }, ...]
   data        Json
   fetchedAt   DateTime @default(now())
 
-  @@index([userId, fetchedAt])
+  @@index([userId, year, fetchedAt])
   @@map("contribution_snapshots")
 }

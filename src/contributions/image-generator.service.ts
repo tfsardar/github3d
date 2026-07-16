@@ -35,7 +35,7 @@ function toPoints(pts: Point[]): string {
 export class ImageGeneratorService {
   generateIsometricSvg(
     days: ContributionDay[],
-    meta?: { username?: string; totalCount?: number },
+    meta?: { username?: string; totalCount?: number; year?: number },
   ): string {
     // Group flat day list into weeks (columns of 7 rows), same layout as GitHub's own calendar
     const weeks: ContributionDay[][] = [];
@@ -80,6 +80,7 @@ export class ImageGeneratorService {
     const offsetY = PADDING + TITLE_HEIGHT - minY;
 
     const shapes: string[] = [];
+    let cubeIndex = 0;
 
     cubes.forEach(({ x: rawX, y: rawY, h, color }) => {
       const x = rawX + offsetX;
@@ -117,16 +118,24 @@ export class ImageGeneratorService {
         { x, y },
       ];
 
+      // Stagger each cube's rise-up animation based on its position so the
+      // grid appears to "grow" left-to-right rather than popping in all at once.
+      const delay = (cubeIndex * 0.006).toFixed(3);
+      cubeIndex += 1;
+
       shapes.push(
-        `<polygon points="${toPoints(left)}" fill="${darken(color, 40)}" />`,
-        `<polygon points="${toPoints(right)}" fill="${darken(color, 65)}" />`,
-        `<polygon points="${toPoints(top)}" fill="${color}" />`,
+        `<g class="cube-rise" style="transform-origin: ${x}px ${y}px; animation-delay: ${delay}s;">` +
+          `<polygon points="${toPoints(left)}" fill="${darken(color, 40)}" />` +
+          `<polygon points="${toPoints(right)}" fill="${darken(color, 65)}" />` +
+          `<polygon points="${toPoints(top)}" fill="${color}" />` +
+          `</g>`,
       );
     });
 
     const title = meta?.username ? `@${meta.username}` : '';
+    const yearLabel = meta?.year ? ` in ${meta.year}` : '';
     const subtitle =
-      meta?.totalCount !== undefined ? `${meta.totalCount} contributions in the last year` : '';
+      meta?.totalCount !== undefined ? `${meta.totalCount} contributions${yearLabel}` : '';
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <defs>
@@ -135,6 +144,15 @@ export class ImageGeneratorService {
       <stop offset="100%" stop-color="${BG_BOTTOM}" />
     </linearGradient>
   </defs>
+  <style>
+    .cube-rise {
+      animation: riseUp 0.5s ease-out both;
+    }
+    @keyframes riseUp {
+      from { transform: scaleY(0); opacity: 0; }
+      to { transform: scaleY(1); opacity: 1; }
+    }
+  </style>
   <rect width="100%" height="100%" fill="url(#bg)" rx="14" />
   ${title ? `<text x="${PADDING}" y="30" font-family="Segoe UI, sans-serif" font-size="18" font-weight="600" fill="#e6edf3">${title}</text>` : ''}
   ${subtitle ? `<text x="${PADDING}" y="50" font-family="Segoe UI, sans-serif" font-size="12" fill="#8b98a5">${subtitle}</text>` : ''}
