@@ -16,12 +16,11 @@ async function bootstrap() {
 
   // Only our Next.js frontend is allowed to call this API
   app.enableCors({
-    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000',
-    methods: ['GET'],
-  });
+  origin: true,
+});
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
-  console.log(`github3d API running on http://localhost:${port}`);
+  console.log(`Server running on port ${port}`);
 }
 bootstrap();
