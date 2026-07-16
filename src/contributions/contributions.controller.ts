@@ -25,7 +25,10 @@ export class ContributionsController {
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async getContributionImage(@Param() params: GetContributionsParamsDto, @Res() res: Response) {
     const data = await this.contributionsService.getOrFetch(params.username);
-    const svg = this.imageGenerator.generateIsometricSvg(data.days);
+    const svg = this.imageGenerator.generateIsometricSvg(data.days, {
+      username: params.username,
+      totalCount: data.totalCount,
+    });
 
     res.setHeader('Content-Type', 'image/svg+xml');
     // GitHub caches embedded images aggressively; keep this shortish so updates show reasonably fast
