@@ -6,6 +6,7 @@ const TILE_H = 9; // half-height of each diamond tile
 const HEIGHT_UNIT = 8; // pixels of bar height per contribution level
 const PADDING = 50;
 const TITLE_HEIGHT = 60;
+const MAX_DISPLAY_WIDTH = 720;
 
 // Nicer palette: deep teal -> bright green, with a soft glow at the top
 const LEVEL_COLORS = ['#1b2733', '#0e4f3d', '#12805c', '#1fb87a', '#3fe3a0'];
@@ -132,12 +133,17 @@ export class ImageGeneratorService {
       );
     });
 
-    const title = meta?.username ? `@${meta.username}` : '';
-    const yearLabel = meta?.year ? ` in ${meta.year}` : '';
-    const subtitle =
-      meta?.totalCount !== undefined ? `${meta.totalCount} contributions${yearLabel}` : '';
+const title = meta?.username ? `@${meta.username}` : '';
+const yearLabel = meta?.year ? ` in ${meta.year}` : '';
+const subtitle =
+  meta?.totalCount !== undefined ? `${meta.totalCount} contributions${yearLabel}` : '';
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+// ← yahan ye 3 lines add karo
+const displayScale = Math.min(1, MAX_DISPLAY_WIDTH / width);
+const displayWidth = Math.round(width * displayScale);
+const displayHeight = Math.round(height * displayScale);
+
+return `<svg xmlns="http://www.w3.org/2000/svg" width="${displayWidth}" height="${displayHeight}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="${BG_TOP}" />
