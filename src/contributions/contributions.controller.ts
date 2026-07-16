@@ -2,25 +2,9 @@ import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { ContributionsService } from './contributions.service';
-import {
-  ImageGeneratorService,
-  ThemeName,
-  AnimationType,
-  RenderOptions,
-} from './image-generator.service';
+import { ImageGeneratorService, ThemeName, AnimationType, RenderOptions } from './image-generator.service';
 import { GetContributionsParamsDto } from './dto/get-contributions.dto';
 import { YearQueryDto } from './dto/year-query.dto';
-
-const VALID_THEMES: ThemeName[] = [
-  'classic',
-  'dark',
-  'neon',
-  'fire',
-  'ocean',
-  'purple',
-  'sakura',
-];
-const VALID_ANIMATIONS: AnimationType[] = ['rise', 'wave', 'fade', 'bounce', 'none'];
 
 @Controller('contributions')
 export class ContributionsController {
@@ -52,26 +36,18 @@ export class ContributionsController {
   async getContributionImage(
     @Param() params: GetContributionsParamsDto,
     @Query() query: YearQueryDto,
-    @Query('theme') themeQuery?: string,
-    @Query('color') colorQuery?: string,
-    @Query('primary') primaryQuery?: string,
-    @Query('secondary') secondaryQuery?: string,
-    @Query('width') widthQuery?: string,
-    @Query('height') heightQuery?: string,
-    @Query('animation') animationQuery?: string,
-    @Query('background') backgroundQuery?: string,
-    @Res() res?: Response,
+    @Res() res: Response,
   ) {
     const data = await this.contributionsService.getOrFetch(params.username, query.year);
 
     const options: RenderOptions = {
-      theme: this.parseTheme(themeQuery),
-      primaryColor: this.parseHexColor(primaryQuery ?? colorQuery),
-      secondaryColor: this.parseHexColor(secondaryQuery),
-      width: this.parsePositiveInt(widthQuery),
-      height: this.parsePositiveInt(heightQuery),
-      animation: this.parseAnimation(animationQuery),
-      transparentBackground: backgroundQuery === 'transparent',
+      theme: query.theme as ThemeName | undefined,
+      primaryColor: this.toHex(query.primary ?? query.color),
+      secondaryColor: this.toHex(query.secondary),
+      width: query.width,
+      height: query.height,
+      animation: query.animation as AnimationType | undefined,
+      transparentBackground: query.background === 'transparent',
     };
 
     const svg = this.imageGenerator.generateIsometricSvg(
@@ -80,38 +56,13 @@ export class ContributionsController {
       options,
     );
 
-    res!.setHeader('Content-Type', 'image/svg+xml');
-    res!.setHeader('Cache-Control', 'public, max-age=3600');
-    res!.send(svg);
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(svg);
   }
 
-  // --- query param parsing helpers (kept here so bad input never reaches the SVG generator) ---
-
-  private parseTheme(value?: string): ThemeName | undefined {
+  private toHex(value?: string): string | undefined {
     if (!value) return undefined;
-    const normalized = value.toLowerCase();
-    return VALID_THEMES.includes(normalized as ThemeName) ? (normalized as ThemeName) : undefined;
-  }
-
-  private parseAnimation(value?: string): AnimationType | undefined {
-    if (!value) return undefined;
-    const normalized = value.toLowerCase();
-    return VALID_ANIMATIONS.includes(normalized as AnimationType)
-      ? (normalized as AnimationType)
-      : undefined;
-  }
-
-  private parseHexColor(value?: string): string | undefined {
-    if (!value) return undefined;
-    const clean = value.startsWith('#') ? value.slice(1) : value;
-    // only accept exactly 6 hex chars — anything else is ignored rather than
-    // passed through, since it ends up inside an SVG fill attribute
-    return /^[0-9a-fA-F]{6}$/.test(clean) ? `#${clean}` : undefined;
-  }
-
-  private parsePositiveInt(value?: string): number | undefined {
-    if (!value) return undefined;
-    const n = parseInt(value, 10);
-    return Number.isFinite(n) && n > 0 ? n : undefined;
+    return value.startsWith('#') ? value : `#${value}`;
   }
 }
